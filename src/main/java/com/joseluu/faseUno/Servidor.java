@@ -3,36 +3,66 @@ package com.joseluu.faseUno;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Servidor {
-    public static void main(String[] args) throws Exception {
-        DatagramSocket serverSocket = new DatagramSocket(9876);
-        byte[] receiveData = new byte[1024];
-        byte[] sendData;
 
-        System.out.println("Servidor UDP iniciado en puerto 9876...");
+    private static final int PUERTO = 9876;
+    private static final String NOMBRE_SERVIDOR = "ServidorUDP";
 
-        while (true) {
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            serverSocket.receive(receivePacket);
+    public static void main(String[] args) {
 
-            String message = new String(receivePacket.getData(), 0, receivePacket.getLength());
-            InetAddress clientAddress = receivePacket.getAddress();
-            int clientPort = receivePacket.getPort();
+        try (DatagramSocket socket = new DatagramSocket(PUERTO)) {
 
-            System.out.println("Mensaje recibido: " + message);
+            System.out.println("Servidor UDP escuchando en puerto " + PUERTO);
 
-            String response;
-            if (message.startsWith("HOLA:")) {
-                String name = message.split(":")[1];
-                response = "HOLA " + name;
-            } else {
-                response = "ERROR";
+            byte[] buffer = new byte[1024];
+
+            while (true) { // El servidor siempre escucha
+
+                DatagramPacket paquete = new DatagramPacket(buffer, buffer.length);
+                socket.receive(paquete);
+
+                String mensaje = new String(
+                        paquete.getData(), 0, paquete.getLength()).trim();
+
+                InetAddress ipCliente = paquete.getAddress();
+                int puertoCliente = paquete.getPort();
+
+                System.out.println("Recibido de " + ipCliente + ": " + mensaje);
+
+                // =========================
+                // VALIDACIÓN ROBUSTA
+                // =========================
+                Pattern pattern = Pattern.compile("@hola#(.+?)@");
+                Matcher matcher = pattern.matcher(mensaje);
+
+                if (matcher.matches()) {
+
+                    String nombreCliente = matcher.group(1);
+                    System.out.println("Saludo válido de: " + nombreCliente);
+
+                    String respuesta = "@hola#" + NOMBRE_SERVIDOR + "@";
+                    enviar(socket, respuesta, ipCliente, puertoCliente);
+
+                } else {
+                    // 🚫 Basura UDP → se ignora
+                    System.out.println("⚠ Trama incorrecta. Ignorada.");
+                }
             }
 
-            sendData = response.getBytes();
-            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, clientAddress, clientPort);
-            serverSocket.send(sendPacket);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    private static void enviar(DatagramSocket socket, String mensaje,
+                               InetAddress ip, int puerto) throws Exception {
+
+        byte[] datos = mensaje.getBytes();
+        DatagramPacket paquete =
+                new DatagramPacket(datos, datos.length, ip, puerto);
+        socket.send(paquete);
     }
 }

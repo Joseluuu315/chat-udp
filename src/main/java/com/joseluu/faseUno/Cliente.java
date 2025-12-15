@@ -1,31 +1,79 @@
 package com.joseluu.faseUno;
 
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketTimeoutException;
+
+import java.net.*;
+import java.util.Scanner;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Cliente {
-    public static void main(String[] args) throws Exception {
-        DatagramSocket clientSocket = new DatagramSocket();
-        clientSocket.setSoTimeout(3000); // Timeout 3s
+    private static final int PUERTO = 9876;
 
-        InetAddress serverAddress = InetAddress.getByName("localhost");
-        byte[] sendData = "HOLA:Juan".getBytes();
-        byte[] receiveData = new byte[1024];
+    public static void main(String[] args) {
 
-        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, serverAddress, 9876);
-        clientSocket.send(sendPacket);
+        try (DatagramSocket socket = new DatagramSocket()) {
 
-        try {
-            DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
-            clientSocket.receive(receivePacket);
-            String response = new String(receivePacket.getData(), 0, receivePacket.getLength());
-            System.out.println("Respuesta del servidor: " + response);
-        } catch (SocketTimeoutException e) {
-            System.out.println("No se recibió respuesta del servidor.");
+            // ⏱️ Timeout de 5 segundos
+            socket.setSoTimeout(5000);
+
+            InetAddress servidor = InetAddress.getByName("localhost");
+            Scanner sc = new Scanner(System.in);
+
+            System.out.print("Introduce tu nombre: ");
+            String nombre = sc.nextLine();
+
+            // =========================
+            // ENVÍO DE SALUDO
+            // =========================
+            String saludo = "@hola#" + nombre + "@";
+            enviar(socket, saludo, servidor, PUERTO);
+            System.out.println("Enviado: " + saludo);
+
+            try {
+                // =========================
+                // RECEPCIÓN DE RESPUESTA
+                // =========================
+                String respuesta = recibir(socket);
+                validarRespuesta(respuesta);
+
+            } catch (SocketTimeoutException e) {
+                System.out.println("⏱️ El servidor no respondió en 5 segundos.");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
 
-        clientSocket.close();
+    // =========================
+    // MÉTODOS AUXILIARES
+    // =========================
+    private static void enviar(DatagramSocket socket, String mensaje,
+                               InetAddress ip, int puerto) throws Exception {
+
+        byte[] datos = mensaje.getBytes();
+        DatagramPacket paquete =
+                new DatagramPacket(datos, datos.length, ip, puerto);
+        socket.send(paquete);
+    }
+
+    private static String recibir(DatagramSocket socket) throws Exception {
+        byte[] buffer = new byte[1024];
+        DatagramPacket paquete = new DatagramPacket(buffer, buffer.length);
+        socket.receive(paquete);
+        return new String(paquete.getData(), 0, paquete.getLength()).trim();
+    }
+
+    private static void validarRespuesta(String respuesta) {
+
+        Pattern pattern = Pattern.compile("@hola#(.+?)@");
+        Matcher matcher = pattern.matcher(respuesta);
+
+        if (matcher.matches()) {
+            String nombreServidor = matcher.group(1);
+            System.out.println("Conectado al servidor: " + nombreServidor);
+        } else {
+            System.out.println("⚠ Respuesta del servidor con formato no válido.");
+        }
     }
 }
