@@ -14,49 +14,52 @@ public class Cliente {
             InetAddress servidor = InetAddress.getByName("localhost");
             Scanner sc = new Scanner(System.in);
 
-            // =========================
-            // 1️⃣ Cliente inicia conversación
-            // =========================
-            String saludo = "que tal";
-            enviar(socket, saludo, servidor, PUERTO);
-            System.out.println("Cliente envía: " + saludo);
+            System.out.println("Conectado al servidor " + servidor + ":" + PUERTO);
+            System.out.println("Escribe 'bye' para salir");
 
-            // =========================
-            // 2️⃣ Recibe respuesta del servidor
-            // =========================
-            String respuesta = recibir(socket);
-            System.out.println("Servidor responde: " + respuesta);
+            // Hilo para recibir mensajes
+            Thread hiloRecepcion = new Thread(() -> {
+                byte[] buffer = new byte[1024];
+                while (true) {
+                    try {
+                        DatagramPacket paquete = new DatagramPacket(buffer, buffer.length);
+                        socket.receive(paquete);
 
-            // =========================
-            // 3️⃣ Cliente responde por última vez
-            // =========================
-            System.out.print("Tu respuesta: ");
-            String texto = sc.nextLine();
-            enviar(socket, texto, servidor, PUERTO);
+                        String mensaje = new String(paquete.getData(), 0, paquete.getLength()).trim();
+                        System.out.println("\nServidor dice: " + mensaje);
+                        System.out.print("Tú: ");
 
-            // =========================
-            // 4️⃣ Fin
-            // =========================
-            System.out.println("Cliente finaliza comunicación.");
+                        if (mensaje.equalsIgnoreCase("bye")) {
+                            System.out.println("Servidor finalizó la comunicación.");
+                            System.exit(0);
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        break;
+                    }
+                }
+            });
+
+            hiloRecepcion.start();
+
+            // Hilo principal para enviar mensajes
+            while (true) {
+                System.out.print("Tú: ");
+                String texto = sc.nextLine();
+                socket.send(new DatagramPacket(texto.getBytes(), texto.getBytes().length, servidor, PUERTO));
+
+                if (texto.equalsIgnoreCase("bye")) {
+                    System.out.println("Cliente finaliza comunicación.");
+                    break;
+                }
+            }
+
+            sc.close();
+            socket.close();
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    private static void enviar(DatagramSocket socket, String mensaje,
-                               InetAddress ip, int puerto) throws Exception {
-
-        byte[] datos = mensaje.getBytes();
-        DatagramPacket paquete =
-                new DatagramPacket(datos, datos.length, ip, puerto);
-        socket.send(paquete);
-    }
-
-    private static String recibir(DatagramSocket socket) throws Exception {
-        byte[] buffer = new byte[1024];
-        DatagramPacket paquete = new DatagramPacket(buffer, buffer.length);
-        socket.receive(paquete);
-        return new String(paquete.getData(), 0, paquete.getLength()).trim();
     }
 }
