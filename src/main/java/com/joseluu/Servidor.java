@@ -8,45 +8,62 @@ public class Servidor {
     private static final int PUERTO = 9876;
     private static final String NOMBRE_SERVIDOR = "ServidorUDP";
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
 
-        DatagramSocket socket = new DatagramSocket(PUERTO);
-        System.out.println("Servidor escuchando en puerto " + PUERTO);
+        try (DatagramSocket socket = new DatagramSocket(PUERTO)) {
 
-        byte[] buffer = new byte[1024];
+            System.out.println("Servidor UDP iniciado en puerto " + PUERTO);
+            byte[] buffer = new byte[1024];
 
-        while (true) {
-            try {
+            while (true) {
                 DatagramPacket paquete = new DatagramPacket(buffer, buffer.length);
                 socket.receive(paquete);
 
-                String mensaje = new String(paquete.getData(), 0, paquete.getLength());
-                System.out.println("Recibido: " + mensaje);
+                String mensaje = new String(paquete.getData(), 0, paquete.getLength()).trim();
+                InetAddress ipCliente = paquete.getAddress();
+                int puertoCliente = paquete.getPort();
 
-                Pattern pattern = Pattern.compile("@hola#(.+?)@");
-                Matcher matcher = pattern.matcher(mensaje);
+                System.out.println("Recibido de " + ipCliente + ": " + mensaje);
 
-                if (matcher.matches()) {
-                    String nombreCliente = matcher.group(1);
-                    System.out.println("Saludo correcto de: " + nombreCliente);
+                // 🔹 FASE 1: Saludo
+                Pattern saludoPattern = Pattern.compile("@hola#(.+?)@");
+                Matcher saludoMatcher = saludoPattern.matcher(mensaje);
+
+                // 🔹 FASE 2: Discover
+                Pattern discoverPattern = Pattern.compile("@discover#(.+?)@");
+                Matcher discoverMatcher = discoverPattern.matcher(mensaje);
+
+                if (saludoMatcher.matches()) {
+
+                    String nombreCliente = saludoMatcher.group(1);
+                    System.out.println("Saludo válido de: " + nombreCliente);
 
                     String respuesta = "@hola#" + NOMBRE_SERVIDOR + "@";
-                    byte[] datosRespuesta = respuesta.getBytes();
+                    enviar(socket, respuesta, ipCliente, puertoCliente);
 
-                    DatagramPacket paqueteRespuesta =
-                            new DatagramPacket(datosRespuesta, datosRespuesta.length,
-                                    paquete.getAddress(), paquete.getPort());
+                } else if (discoverMatcher.matches()) {
 
-                    socket.send(paqueteRespuesta);
+                    System.out.println("Discover recibido");
+                    String respuesta = "@here#" + NOMBRE_SERVIDOR + "@";
+                    enviar(socket, respuesta, ipCliente, puertoCliente);
 
                 } else {
-                    System.out.println("⚠ Trama incorrecta, ignorada");
+                    // 🔒 Robustez: basura ignorada
+                    System.out.println("⚠ Trama incorrecta ignorada");
                 }
-
-            } catch (Exception e) {
-                // UDP NUNCA debe morir por un paquete malformado
-                System.out.println("Error procesando paquete, continuamos...");
             }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+    }
+
+    private static void enviar(DatagramSocket socket, String mensaje,
+                               InetAddress ip, int puerto) throws Exception {
+
+        byte[] datos = mensaje.getBytes();
+        DatagramPacket paquete =
+                new DatagramPacket(datos, datos.length, ip, puerto);
+        socket.send(paquete);
     }
 }
