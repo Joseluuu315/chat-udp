@@ -5,7 +5,8 @@ public class Cliente {
     public static void main(String[] args) throws Exception {
         DatagramSocket clientSocket = new DatagramSocket();
         clientSocket.setBroadcast(true);
-        clientSocket.setSoTimeout(3000); // Timeout 3s para esperar respuestas
+        clientSocket.setSoTimeout(3000); // Timeout 3s para md
+        // esperar respuestas
 
         byte[] sendData = "DISCOVER_SERVER".getBytes();
         byte[] receiveData = new byte[1024];

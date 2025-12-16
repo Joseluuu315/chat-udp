@@ -21,7 +21,7 @@ public class Servidor {
             int clientPort = receivePacket.getPort();
 
             // Filtrar auto-respuesta
-            if (!clientAddress.equals(InetAddress.getLocalHost())) {
+            if (message.equals("DISCOVER_SERVER") && !clientAddress.equals(InetAddress.getLocalHost())) {
                 System.out.println("Solicitud de descubrimiento recibida de: " + clientAddress);
 
                 String response = "SERVER_HERE:" + InetAddress.getLocalHost().getHostName();
