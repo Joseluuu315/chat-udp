@@ -14,12 +14,19 @@ public class Cliente {
                 new InputStreamReader(socket.getInputStream()));
         PrintWriter salida = new PrintWriter(socket.getOutputStream(), true);
 
+        Scanner teclado = new Scanner(System.in);
+
+        // El servidor pide el nick
+        System.out.println(entrada.readLine());
+        String nick = teclado.nextLine();
+        salida.println(nick);
+
         // Hilo que ESCUCHA
         Thread hiloOye = new Thread(() -> {
             try {
                 String mensaje;
                 while ((mensaje = entrada.readLine()) != null) {
-                    System.out.println("Servidor: " + mensaje);
+                    System.out.println(mensaje);
                 }
             } catch (IOException e) {
                 System.out.println("Servidor desconectado");
@@ -28,7 +35,6 @@ public class Cliente {
 
         // Hilo que HABLA
         Thread hiloHabla = new Thread(() -> {
-            Scanner teclado = new Scanner(System.in);
             while (true) {
                 String mensaje = teclado.nextLine();
                 salida.println(mensaje);

@@ -2,43 +2,69 @@ package com.joseluu.faseCuatro;
 
 import java.io.*;
 import java.net.*;
-import java.util.Scanner;
+import java.util.*;
 
 public class Servidor {
 
+    private static Map<PrintWriter, String> clientes = new HashMap<>();
+
     public static void main(String[] args) throws IOException {
         ServerSocket serverSocket = new ServerSocket(5000);
-        System.out.println("Servidor esperando conexión...");
+        System.out.println("Servidor de chat iniciado...");
 
-        Socket socket = serverSocket.accept();
-        System.out.println("Cliente conectado");
+        while (true) {
+            Socket socket = serverSocket.accept();
+            new Thread(new ClienteHandler(socket)).start();
+        }
+    }
 
-        BufferedReader entrada = new BufferedReader(
-                new InputStreamReader(socket.getInputStream()));
-        PrintWriter salida = new PrintWriter(socket.getOutputStream(), true);
+    static class ClienteHandler implements Runnable {
 
-        // Hilo que ESCUCHA
-        Thread hiloOye = new Thread(() -> {
+        private Socket socket;
+        private BufferedReader entrada;
+        private PrintWriter salida;
+        private String nick;
+
+        public ClienteHandler(Socket socket) throws IOException {
+            this.socket = socket;
+            entrada = new BufferedReader(
+                    new InputStreamReader(socket.getInputStream()));
+            salida = new PrintWriter(socket.getOutputStream(), true);
+        }
+
+        @Override
+        public void run() {
             try {
+                // Pedir nickname
+                salida.println("Introduce tu nickname:");
+                nick = entrada.readLine();
+
+                synchronized (clientes) {
+                    clientes.put(salida, nick);
+                }
+
+                enviarATodos("🟢 " + nick + " se ha conectado");
+
                 String mensaje;
                 while ((mensaje = entrada.readLine()) != null) {
-                    System.out.println("Cliente: " + mensaje);
+                    enviarATodos(nick + ": " + mensaje);
                 }
             } catch (IOException e) {
-                System.out.println("Cliente desconectado");
+                // cliente caído
+            } finally {
+                synchronized (clientes) {
+                    clientes.remove(salida);
+                }
+                enviarATodos("🔴 " + nick + " se ha desconectado");
             }
-        });
+        }
 
-        // Hilo que HABLA
-        Thread hiloHabla = new Thread(() -> {
-            Scanner teclado = new Scanner(System.in);
-            while (true) {
-                String mensaje = teclado.nextLine();
-                salida.println(mensaje);
+        private void enviarATodos(String mensaje) {
+            synchronized (clientes) {
+                for (PrintWriter cliente : clientes.keySet()) {
+                    cliente.println(mensaje);
+                }
             }
-        });
-
-        hiloOye.start();
-        hiloHabla.start();
+        }
     }
 }
