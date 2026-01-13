@@ -8,7 +8,6 @@ public class Cliente {
 
     public static void main(String[] args) throws IOException {
         Socket socket = new Socket("localhost", 5000);
-        System.out.println("Conectado al servidor");
 
         BufferedReader entrada = new BufferedReader(
                 new InputStreamReader(socket.getInputStream()));
@@ -16,32 +15,25 @@ public class Cliente {
 
         Scanner teclado = new Scanner(System.in);
 
-        // El servidor pide el nick
         System.out.println(entrada.readLine());
-        String nick = teclado.nextLine();
-        salida.println(nick);
+        salida.println(teclado.nextLine());
 
-        // Hilo que ESCUCHA
-        Thread hiloOye = new Thread(() -> {
+        new Thread(() -> {
             try {
-                String mensaje;
-                while ((mensaje = entrada.readLine()) != null) {
-                    System.out.println(mensaje);
+                String msg;
+                while ((msg = entrada.readLine()) != null) {
+                    System.out.println(msg);
                 }
-            } catch (IOException e) {
-                System.out.println("Servidor desconectado");
+            } catch (IOException ignored) {
             }
-        });
+        }).start();
 
-        // Hilo que HABLA
-        Thread hiloHabla = new Thread(() -> {
-            while (true) {
-                String mensaje = teclado.nextLine();
-                salida.println(mensaje);
-            }
-        });
+        while (true) {
+            String mensaje = teclado.nextLine();
+            salida.println(mensaje);
+            if (mensaje.equalsIgnoreCase("/salir")) break;
+        }
 
-        hiloOye.start();
-        hiloHabla.start();
+        socket.close();
     }
 }
