@@ -8,10 +8,10 @@ import java.util.*;
 
 public class Servidor {
 
-    private static Map<PrintWriter, String> clientes = new HashMap<>();
-    private static DateTimeFormatter hora = DateTimeFormatter.ofPattern("HH:mm");
+    private static final Map<PrintWriter, String> clientes = new HashMap<>();
+    private static final DateTimeFormatter hora = DateTimeFormatter.ofPattern("HH:mm");
 
-    class Colores {
+    static class Colores {
         public static final String RESET = "\u001B[0m";
         public static final String VERDE = "\u001B[32m";
         public static final String ROJO = "\u001B[31m";
@@ -32,13 +32,11 @@ public class Servidor {
 
     static class ClienteHandler implements Runnable {
 
-        private Socket socket;
-        private BufferedReader entrada;
-        private PrintWriter salida;
+        private final BufferedReader entrada;
+        private final PrintWriter salida;
         private String nick;
 
         public ClienteHandler(Socket socket) throws IOException {
-            this.socket = socket;
             entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             salida = new PrintWriter(socket.getOutputStream(), true);
         }
